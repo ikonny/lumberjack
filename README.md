@@ -4,10 +4,8 @@ Active Directory forest security testing
 
 TODO
 ----
-* Create makefile (or whatever MINGW32 uses)
 * JetGetDatabaseFileInfo before opening
 * Check log format for pending to apply logs, e.g. to see if there are any issues with the version or similar
-* Create documentation on pitfalls to avoid and typical resolution for errors
 
 ESE database compatibility
 ==========================
