@@ -1,0 +1,21 @@
+LIBRARY ESENT.DLL
+EXPORTS
+JetInit@4
+JetSetSystemParameter@20
+JetBeginSession
+JetAttachDatabase
+JetOpenDatabase
+JetOpenTable@28
+JetSetCurrentIndex@12
+JetRetrieveColumns@16
+JetMove@16
+JetBeginTransaction@4
+JetPrepareUpdate@12
+JetSetColumn@28
+JetUpdate@20
+JetCommitTransaction@8
+JetDetachDatabase@8
+JetEndSession@8
+JetTerm@4
+JetCloseDatabase@12
+JetGetSystemParameter@24
