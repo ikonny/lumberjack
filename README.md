@@ -2,6 +2,18 @@ lumberjack
 ==========
 Active Directory forest security testing
 
+lumberjack implements well-known attacks against flaws in Active Directory forest and domain design:
+
+* SIDHistory: the lack of SID filtering amongst all domains in a forest allows a rogue domain administrator to impersonate an admin in any of the other domains.
+
+SIDHistory
+----------
+First described by Aelita [1] in 2002, a rogue administrator of a domain can modify the SIDHistory of any user in a controlled domain to impersonate a user form any other domain inside the forest. The control that disables this attack (SID filtering, described in MS02-001 [2]) is not effective within a forest, basically allowing any domain admin to control any of the data in the forest.
+
+[1] http://www.decuslib.com/decus/vmslt02a/sec/nt-sidescalation-attack.txt
+[2] https://technet.microsoft.com/en-us/library/security/ms02-001.aspx
+
+
 TODO
 ----
 * JetGetDatabaseFileInfo before opening
