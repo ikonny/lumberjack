@@ -10,11 +10,7 @@ SIDHistory
 ----------
 First described by [Aelita][AELITA] in 2002, a rogue administrator of a domain can modify the SIDHistory of any user in a controlled domain to impersonate a user form any other domain inside the forest. The control that disables this attack (SID filtering, described in [MS02-001][MS02-001]) is not effective within a forest, basically allowing any domain admin to control any of the data in the forest.
 
-The implementation of the attack is heavily based on the [SHEdit][SHEDIT] work by Tibor Biro.
-
-[AELITA]: http://www.decuslib.com/decus/vmslt02a/sec/nt-sidescalation-attack.txt
-[MS02-001]: https://technet.microsoft.com/en-us/library/security/ms02-001.aspx
-[SHEDIT]: http://www.tbiro.com/projects/SHEdit/
+The implementation of the attack is heavily based on the [SHEdit][SHEDIT] work by Tibor Biro, however as far as we know this is the first open-source 
 
 TODO
 ----
@@ -56,3 +52,7 @@ If you are not able to recover the database you are probably only left with the 
 	ESENTUTL /p /o ntds.dit
 
 If you are able to repair or recover the database, please take a backiup of the resulting files. You do not want the results of all your efforts lost.
+
+[AELITA]: http://www.decuslib.com/decus/vmslt02a/sec/nt-sidescalation-attack.txt
+[MS02-001]: https://technet.microsoft.com/en-us/library/security/ms02-001.aspx
+[SHEDIT]: http://www.tbiro.com/projects/SHEdit/
