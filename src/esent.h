@@ -4,7 +4,7 @@
  *  http://msdn.microsoft.com/en-us/library/gg269245(v=exchg.10).aspx
  */
 
- #include <tchar.h>
+#include <tchar.h>
 
 #ifndef _ESENT_H_
 #define _ESENT_H
@@ -77,6 +77,7 @@
 #define JET_cbtypFreeTableLS 				0x00000400
 
 /* JET_COLTYP */
+/*
 #define JET_coltypNil 			0
 #define JET_coltypBit 			1
 #define JET_coltypUnsignedByte 	2
@@ -96,6 +97,8 @@
 #define JET_coltypGUID 			16
 #define JET_coltypUnsignedShort 17
 #define JET_coltypMax 			18
+*/
+typedef enum  {JET_coltypNil = 0, JET_coltypBit = 1, JET_coltypUnsignedByte = 2, JET_coltypShort = 3, JET_coltypLong = 4, JET_coltypCurrency = 5, JET_coltypIEEESingle = 6, JET_coltypIEEEDouble = 7, JET_coltypDateTime = 8, JET_coltypBinary = 9, JET_coltypText = 10, JET_coltypLongBinary = 11, JET_coltypLongText = 12, JET_coltypSLV = 13, JET_coltypUnsignedLong = 14, JET_coltypLongLong = 15, JET_coltypGUID = 16, JET_coltypUnsignedShort = 17, JET_coltypMax = 18}  JET_COLTYP;
 
 /* Error Handling Constants */
 #define JET_ExceptionMsgBox	0x0001
@@ -233,6 +236,8 @@
 #define JET_paramSystemPath											0
 #define JET_paramWaitLogFlush										13
 
+/* Paramaters to JetGetTableColumnInfo / JetGetColumnInfo */
+#define JET_ColInfo	0 // XXX: Trial and error?
 
 /* */
 
@@ -293,6 +298,25 @@ typedef struct {
   unsigned long itagSequence;
 } JET_SETINFO;
 
+typedef struct {
+  unsigned long cbStruct;
+  unsigned long ibLongValue;
+  unsigned long itagSequence;
+  JET_COLUMNID columnidNextTagged;
+} JET_RETINFO;
+
+typedef struct {
+  unsigned long cbStruct;
+  JET_COLUMNID columnid;
+  JET_COLTYP coltyp;
+  unsigned short wCountry;
+  unsigned short langid;
+  unsigned short cp;
+  unsigned short wCollate;
+  unsigned long cbMax;
+  JET_GRBIT grbit;
+} JET_COLUMNDEF;
+
 // ??? API
 
 JET_ERR JET_API JetInit(
@@ -321,6 +345,17 @@ JET_ERR JET_API JetSetCurrentIndex(
   __in          JET_SESID sesid,
   __in          JET_TABLEID tableid,
   __in_opt      const TCHAR* szIndexName
+);
+
+JET_ERR JET_API JetRetrieveColumn(
+  __in          JET_SESID sesid,
+  __in          JET_TABLEID tableid,
+  __in          JET_COLUMNID columnid,
+  __out_opt     void* pvData,
+  __in          unsigned long cbData,
+  __out_opt     unsigned long* pcbActual,
+  __in          JET_GRBIT grbit,
+  __in_out_opt  JET_RETINFO* pretinfo
 );
 
 JET_ERR JET_API JetRetrieveColumns(
@@ -397,6 +432,15 @@ JET_ERR JET_API JetGetSystemParameter(
   __in_out_opt  JET_API_PTR* plParam,
   __out_opt     JET_PSTR szParam,
   __in          unsigned long cbMax
+);
+
+JET_ERR JET_API JetGetTableColumnInfo(
+  __in          JET_SESID sesid,
+  __in          JET_TABLEID tableid,
+  __in          const TCHAR* szColumnName,
+  __out         void* pvResult,
+  __in          unsigned long cbMax,
+  __in          unsigned long InfoLevel
 );
 
 #if 0

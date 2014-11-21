@@ -9,25 +9,28 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <windows.h>
-#include <tchar.h>
 #include <sddl.h>
 #include "esent.h"
 
 #define DATASIZ 1024
 
-char *jet_db_error(JET_INSTANCE *db, JET_SESID *db_session, JET_ERR err, char *buf, unsigned int buflen);
+JET_PSTR jet_db_error(JET_INSTANCE *db, JET_SESID *db_session, JET_ERR err, JET_PSTR buf, unsigned int buflen);
 
 int jet_get_column_value(JET_INSTANCE *db, JET_SESID *db_session, JET_TABLEID db_table, JET_COLUMNID column_id, wchar_t *column_data, unsigned int buflen);
+JET_ERR jet_get_column_id(JET_SESID db_session, JET_TABLEID db_table, const char *column_name, JET_COLUMNID *column_id);
 
-int jet_db_initialize(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id, const TCHAR *db_filename, char *db_checkpoint_filepath, char *db_temporary_filepath);
+int jet_db_initialize(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id, const char *db_filename, const char *db_checkpoint_filepath, const char *db_temporary_filepath);
 int jet_db_shutdown(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id);
 
-int log_error(const char *format, ...);
-int log_ok(const char *format, ...);
-int _vlog(FILE *out, const char *qualifier, const char *format, va_list va);
-void usage (char *progname);
+int log_error(const wchar_t *format, ...);
+int log_ok(const wchar_t *format, ...);
+int log_debug(const wchar_t *format, ...);
+int _vlog(FILE *out, const wchar_t *qualifier, const wchar_t *format, va_list va);
+void usage (const char *progname);
 
-int jet_db_initialize(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id, const TCHAR *db_filename, char *db_checkpoint_filepath, char *db_temporary_filepath) {
+int debug_level = 0;
+
+int jet_db_initialize(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id, const char *db_filename, const char *db_checkpoint_filepath, const char *db_temporary_filepath) {
 	int ret = -1;
 	JET_ERR err = 0;
 	JET_UNICODEINDEX unicode_index;
@@ -98,85 +101,85 @@ int jet_db_initialize(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id, 
 																				ret = 0;
 																				return(ret);
 																			} else {
-																				log_error("Error opening database: %s (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																				log_error(L"Error opening database: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																			}
 
 																			err = JetDetachDatabase(*db_session, NULL);
 																			
 																			if(err != JET_errSuccess) {
-																				log_error("Error detaching database: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																				log_error(L"Error detaching database: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																			}
 																		} else {
-																			log_error("Error attaching database \"%s\": %s (%d)\n", db_filename, jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																			log_error(L"Error attaching database \"%S\": %S (%d)\n", db_filename, jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																		}
 
 																		err = JetEndSession(*db_session, 0);
 
 																		if(err != JET_errSuccess) {
-																			log_error("Error closing session: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																			log_error(L"Error closing session: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																		}
 
 																	} else {
-																		log_error("Error beginning JET session: %s (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																		log_error(L"Error beginning JET session: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																	}
 																
 																	err = JetTerm(*db);
 																	
 																	if(err != JET_errSuccess) {
-																		log_error("Error terminating instance: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																		log_error(L"Error terminating instance: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																	}
 																
 																} else {
-																	log_error("Error initializing JET engine: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																	log_error(L"Error initializing JET engine: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 																}
 															} else {
-																log_error("JetSetSystemParameter failed for JET_paramAlternateDatabaseRecoveryPath: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+																log_error(L"JetSetSystemParameter failed for JET_paramAlternateDatabaseRecoveryPath: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 															}
 
 														} else {
-															log_error("JetSetSystemParameter failed for JET_paramLogFilePath: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+															log_error(L"JetSetSystemParameter failed for JET_paramLogFilePath: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 														}
 													} else {
-														log_error("JetSetSystemParameter failed for JET_paramDeleteOutOfRangeLogs: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+														log_error(L"JetSetSystemParameter failed for JET_paramDeleteOutOfRangeLogs: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 													}
 												} else {
-													log_error("JetSetSystemParameter failed for JET_paramCircularLog: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+													log_error(L"JetSetSystemParameter failed for JET_paramCircularLog: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 												}
 											} else {
-												log_error("JetSetSystemParameter failed for JET_paramMaxOpenTables: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+												log_error(L"JetSetSystemParameter failed for JET_paramMaxOpenTables: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 											}
 										} else {
-											log_error("JetSetSystemParameter failed for JET_paramLogFileSize: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+											log_error(L"JetSetSystemParameter failed for JET_paramLogFileSize: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 										}
 									} else {
-										log_error("JetSetSystemParameter failed for JET_paramEventSource: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+										log_error(L"JetSetSystemParameter failed for JET_paramEventSource: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 									}
 								} else {
-									log_error("JetSetSystemParameter failed for 36???: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+									log_error(L"JetSetSystemParameter failed for 36???: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 								}
 							} else {
-								log_error("JetSetSystemParameter failed for JET_paramRecovery: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+								log_error(L"JetSetSystemParameter failed for JET_paramRecovery: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 							}
 							
 						} else {
-							log_error("JetSetSystemParameter failed for JET_paramTempPath: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+							log_error(L"JetSetSystemParameter failed for JET_paramTempPath: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 						}
 
 					} else {
-						log_error("JetSetSystemParameter failed for JET_paramSystemPath: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+						log_error(L"JetSetSystemParameter failed for JET_paramSystemPath: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 					}
 				} else {
-					log_error("JetSetSystemParameter failed for JET_paramEnableIndexChecking: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+					log_error(L"JetSetSystemParameter failed for JET_paramEnableIndexChecking: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 				}
 
 			} else {
-				log_error("JetSetSystemParameter failed for JET_paramDeleteOldLogs: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+				log_error(L"JetSetSystemParameter failed for JET_paramDeleteOldLogs: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 			}
 		} else {
-			log_error("JetSetSystemParameter failed for JET_paramDatabasePageSize: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+			log_error(L"JetSetSystemParameter failed for JET_paramDatabasePageSize: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 		}
 	} else {
-		log_error("JetSetSystemParameter failed for JET_paramUnicodeIndexDefault: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+		log_error(L"JetSetSystemParameter failed for JET_paramUnicodeIndexDefault: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 	}
 
 	return (ret);
@@ -190,35 +193,35 @@ int jet_db_shutdown(JET_INSTANCE *db, JET_SESID *db_session, JET_DBID *db_id) {
 	err = JetCloseDatabase(*db_session, *db_id, 0);
 	
 	if(err != JET_errSuccess) {
-		log_error("Error closing database: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+		log_error(L"Error closing database: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 		ret = -1;
 	}
 
 	err = JetDetachDatabase(*db_session, NULL);
 
 	if(err != JET_errSuccess) {
-		log_error("Error detaching database: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+		log_error(L"Error detaching database: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 		ret = -1;
 	}
 	
 	err = JetEndSession(*db_session, 0);
 
 	if(err != JET_errSuccess) {
-		log_error("Error closing session: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+		log_error(L"Error closing session: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 		ret = -1;
 	}
 	
 	err = JetTerm(*db);
 
 	if(err != JET_errSuccess) {
-		log_error("Error terminating instance: %s (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+		log_error(L"Error terminating instance: %S (%d). Database may be in an inconsistent state.\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 		ret = -1;
 	}
 
 	return (ret);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char *argv[]) {
 	int ret = -1;
 	JET_ERR err = 0;
 	JET_INSTANCE db;
@@ -239,8 +242,12 @@ int main(int argc, char **argv) {
 	char *cfg_tmpedb = "temp.edb";
 	char *cfg_username = NULL;
 	char *cfg_newsid = NULL;
+
 	PSID sid, old_sid;
 	int sid_length;
+	int column_len;
+
+	wmemset(cfg_newsid, 0, DATASIZ);
 
 	/* Parse options */
 	
@@ -248,7 +255,8 @@ int main(int argc, char **argv) {
 	while (1) {
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
-			{"db", required_argument, 0, 'd'},
+			{"debug", required_argument, 0, 'd'},
+			{"file", required_argument, 0, 'f'},
 			{"logdir", required_argument, 0, 'l'},
 			{"newsid", required_argument, 0, 'n'},
 			{"tmpedb", required_argument, 0, 't'},
@@ -256,7 +264,7 @@ int main(int argc, char **argv) {
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "d:hln:tu:", long_options, &option_index);
+		c = getopt_long(argc, argv, "d:f:hln:tu:", long_options, &option_index);
 
 		if(c == -1) {
 			break;
@@ -264,6 +272,10 @@ int main(int argc, char **argv) {
 
 		switch(c) {
 			case 'd':
+					debug_level = atoi(optarg);
+					break;
+
+			case 'f':
 					cfg_dbname = optarg;
 					break;
 
@@ -296,11 +308,12 @@ int main(int argc, char **argv) {
 	}
 
 	if(ConvertStringSidToSid(cfg_newsid, &sid) == 0) {
-		log_error("Invalid SID format, it must be in the format S-R-I-S-S (e.g. S-1-5-32-...)\n");
+		log_error(L"Invalid SID format, it must be in the format S-R-I-S-S (e.g. S-1-5-32-...)\n");
 		exit(-1);
 	}	
 	
 	if(jet_db_initialize(&db, &db_session, &db_id, cfg_dbname, cfg_logdir, cfg_tmpedb) == 0) {
+
 		err = JetOpenTable(db_session, db_id, "datatable", NULL, 0, 8, &table_datatable);
 
 		if(err == JET_errSuccess) {
@@ -309,110 +322,126 @@ int main(int argc, char **argv) {
 
 			if(err == JET_errSuccess) {
 
-				do {
-					columnid_object_name = 366; // 366 -> ATTm3 -> "Object Name"
+				err = jet_get_column_id(db_session, table_datatable, "ATTm3", &columnid_object_name); // 366; // 366 -> ATTm3 -> "Object Name"
+					
+				if(err == JET_errSuccess) {
+					log_debug(L"Retrieved column ID for object-name column: %d\n", columnid_object_name);
 
-					if(jet_get_column_value(&db, &db_session, table_datatable, columnid_object_name, column_data, DATASIZ) >= 0) {
-						memset(column_data_mb, 0, DATASIZ * 4);
-						WideCharToMultiByte(0, 0, column_data, -1, column_data_mb, DATASIZ, 0, 0);
+					do {
+						column_len = jet_get_column_value(&db, &db_session, table_datatable, columnid_object_name, column_data, DATASIZ);
 
-//						printf("Record #%d: %s!!!!!!!\n", cnt, column_data_mb);
-						
-						// Compare column_data_mb against user
-						if(!_mbsncmp(column_data_mb, cfg_username)) {
-							user_record = cnt;
-							log_ok("Found entry for user '%s' in record #%d\n", column_data_mb, cnt);
-							break;
+						if(column_len >= 0) {
+							memset(column_data_mb, 0, DATASIZ * 4);
+							WideCharToMultiByte(0, 0, column_data, -1, column_data_mb, DATASIZ, 0, 0);
+
+							log_debug(L"Found record #%d: %s\n", cnt, column_data);
+
+							// Compare column_data_mb against user
+							if(!_mbsncmp(column_data_mb, cfg_username)) {
+								user_record = cnt;
+								log_ok(L"Found entry for user '%S' in record #%d\n", column_data_mb, cnt);
+								break;
+							}
+
+							err = JetMove(db_session, table_datatable, 1, 0);
+
+							if(err != JET_errSuccess && err!= JET_errNoCurrentRecord) {
+								log_error(L"JetMove failed: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+							}
 						}
 
-						err = JetMove(db_session, table_datatable, 1, 0);
-
-						if(err != JET_errSuccess && err!= JET_errNoCurrentRecord) {
-							log_error("JetMove failed: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
-						}
-					}
-
-					cnt++;
-				} while(err == JET_errSuccess);
+						cnt++;
+					} while(err == JET_errSuccess);
+				} else {
+				  log_error(L"Could not retrieve column ID for object-name column, exiting");
+				  exit(-1);
+				}
 
 				if(user_record >= 0) {
-					sidhistory_object_name = 1137; // 1137 -> ATTr590433 -> "SidHistory"?
-
-					sid_length = jet_get_column_value(&db, &db_session, table_datatable, sidhistory_object_name, column_data, DATASIZ);
-
-					if(sid_length > 0) {
-						old_sid = (PSID) column_data;
-						
-						if(IsValidSid(old_sid)) {
-							LPTSTR sid_string;
-							if(ConvertSidToStringSid(old_sid, &sid_string) != 0) {
-								log_ok("User has an existing SIDHistory entry that will be replaced: %s\n", sid_string);
-								LocalFree(sid_string);
-								sid_string = NULL;
-							}	
-						}
-					}
-
-					err = JetBeginTransaction(db_session);
+					err = jet_get_column_id(db_session, table_datatable, "ATTr590433", &sidhistory_object_name);
 					
 					if(err == JET_errSuccess) {
-						err = JetPrepareUpdate(db_session, table_datatable, 2); // TODO: PrepCode is not in MSDN?
-	
-						if(err == JET_errSuccess) {
-							err = JetSetColumn(db_session, table_datatable, sidhistory_object_name, sid, GetLengthSid(sid), 0, NULL);
+						log_debug(L"Retrieved column ID for SidHistory column: %d\n", sidhistory_object_name);
+						sid_length = jet_get_column_value(&db, &db_session, table_datatable, sidhistory_object_name, column_data, DATASIZ);
 
+						if(sid_length > 0) {
+							old_sid = (PSID) column_data;
+							
+							if(IsValidSid(old_sid)) {
+								LPTSTR sid_string;
+								if(ConvertSidToStringSid(old_sid, &sid_string) != 0) {
+									log_ok(L"User has an existing SIDHistory entry that will be replaced: %S\n", sid_string);
+									LocalFree(sid_string);
+									sid_string = NULL;
+								}	
+							}
+						}
+
+						err = JetBeginTransaction(db_session);
+						
+						if(err == JET_errSuccess) {
+							err = JetPrepareUpdate(db_session, table_datatable, 2); // TODO: PrepCode is not in MSDN?
+		
 							if(err == JET_errSuccess) {
-								err = JetUpdate(db_session, table_datatable, NULL, 0, NULL);
+								err = JetSetColumn(db_session, table_datatable, sidhistory_object_name, sid, GetLengthSid(sid), 0, NULL);
 
 								if(err == JET_errSuccess) {
-									err = JetCommitTransaction(db_session, 0);
+									err = JetUpdate(db_session, table_datatable, NULL, 0, NULL);
 
 									if(err == JET_errSuccess) {
-										ret = 0;
-										log_ok("SID History updated successfully for user '%s'", cfg_username);
+										err = JetCommitTransaction(db_session, 0);
+
+										if(err == JET_errSuccess) {
+											ret = 0;
+											log_ok(L"SID History updated successfully for user '%S'\n", cfg_username);
+										} else {
+											log_error(L"JetCommitTransaction failed: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+										}
+										
 									} else {
-										log_error("JetCommitTransaction failed: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+										log_error(L"JetUpdate failed: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
 									}
 									
 								} else {
-									log_error("JetUpdate failed: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+									log_error(L"JetSetColumn failed: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
 								}
-								
-							} else {
-								log_error("JetSetColumn failed: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
-							}
 
+							} else {
+								log_error(L"JetPrepareUpdate failed: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+							}
 						} else {
-							log_error("JetPrepareUpdate failed: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+							log_error(L"JetBeginTransaction failed: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
 						}
 					} else {
-						log_error("JetBeginTransaction failed: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+					  log_error(L"Could not retrieve column ID for SidHistory column, exiting\n");
+					  exit(-1);
 					}
+
 				} else {
-					log_error("User '%s' not found in NTDS file", cfg_username);
+					log_error(L"User '%S' not found in NTDS file\n", cfg_username);
 				}
 			} else {
-				log_error("JetSetCurrentIndex failed for datatable->DNT_index: %s (%d)", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
+				log_error(L"JetSetCurrentIndex failed for datatable->DNT_index: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
 			}
 
 		} else {
-			log_error("Error opening \"datatable\" table");
+			log_error(L"Error opening \"datatable\" table: %S (%d)\n", jet_db_error(&db, &db_session, err, errbuf, errbuflen), err);
 		}
 
 		if(jet_db_shutdown(&db, &db_session, &db_id) != 0) {
-			log_error("Error shutting down database, it may have been left in an inconsistent state after the SID updates.");
+			log_error(L"Error shutting down database, it may have been left in an inconsistent state after the SID updates.\n");
 		}
 
 	} else {
-		log_error("The AD database file could not be open, please resolve the issue and try again");
+		log_error(L"The AD database file could not be open, please resolve the issue and try again\n");
 	}
 
 	return ret;
 }
 
-char *jet_db_error(JET_INSTANCE *db, JET_SESID *db_session, JET_ERR err, char *buf, unsigned int buflen) {
-	char *ret = NULL;
-	
+JET_PSTR jet_db_error(JET_INSTANCE *db, JET_SESID *db_session, JET_ERR err, JET_PSTR buf, unsigned int buflen) {
+	JET_PSTR ret = NULL;
+
 	if(db && db_session) {
 	
 		if(JetGetSystemParameter(*db, *db_session, JET_paramErrorToString, (JET_API_PTR *) &err, buf, buflen) == JET_errSuccess && strlen(buf) < buflen-1) {
@@ -424,24 +453,38 @@ char *jet_db_error(JET_INSTANCE *db, JET_SESID *db_session, JET_ERR err, char *b
 	return ret;
 }
 
-int log_error(const char *format, ...) {
+int log_error(const wchar_t *format, ...) {
 	int ret = -1;
 
     va_list va;
     va_start(va, format);
-	ret = _vlog(stderr, "[-]", format, va);
+	ret = _vlog(stderr, L"[-]", format, va);
     va_end(va);
 
 	return (ret);
 }
 
-int log_ok(const char *format, ...) {
+int log_ok(const wchar_t *format, ...) {
 	int ret = -1;
 
     va_list va;
     va_start(va, format);
-	ret = _vlog(stderr, "[+]", format, va);
+	ret = _vlog(stderr, L"[+]", format, va);
     va_end(va);
+
+	return (ret);
+}
+
+int log_debug(const wchar_t *format, ...) {
+	int ret = -1;
+	
+    va_list va;
+
+	if(debug_level > 0) {
+		va_start(va, format);
+		ret = _vlog(stderr, L"[D]", format, va);
+		va_end(va);
+	}
 
 	return (ret);
 }
@@ -453,43 +496,52 @@ int jet_get_column_value(JET_INSTANCE *db, JET_SESID *db_session, JET_TABLEID db
 	int ret = -1;
 	char errbuf[BUFSIZ];
 	int errbuflen = BUFSIZ;
+	unsigned long actual_len = 0;
 
 	memset(column_data, 0, buflen);
 
-	column.columnid = column_id; // ATTm3: "Object Name"
-	column.pvData = column_data;
-	column.cbData = buflen;
-	column.cbActual = 0;
-	column.grbit = 0;
-	column.ibLongValue = 0;
-	column.itagSequence = 1;
-	column.columnidNextTagged = 0;
-	column.columnidNextTagged = 0;
-
-	err = JetRetrieveColumns(*db_session, db_table, &column, 1);
+	err = JetRetrieveColumn(*db_session, db_table, column_id, column_data, buflen, &actual_len, 0, NULL);
 
 	if(err == JET_errSuccess) {
-		ret = column.cbActual;
+		ret = actual_len;
+	} else if (err == JET_wrnColumnNull) {
+		ret = 0;
 	} else {
-		log_error("JetRetrieveColumn failed: %s (%d)", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
+		log_error(L"JetRetrieveColumn failed: %S (%d)\n", jet_db_error(db, db_session, err, errbuf, errbuflen), err);
 	}
 
 	return (ret);
 }
 
-int _vlog(FILE *out, const char *qualifier, const char *format, va_list va) {
+JET_ERR jet_get_column_id(JET_SESID db_session, JET_TABLEID db_table, const char *column_name, JET_COLUMNID *column_id) {
+	JET_ERR ret = 0;
+	JET_COLUMNDEF column;
+
+	*column_id = 0;
+	
+	ret = JetGetTableColumnInfo(db_session, db_table, column_name, &column, sizeof(column), JET_ColInfo);
+	
+	if(ret == JET_errSuccess) {
+		*column_id = column.columnid;
+	}
+
+	return (ret);
+}
+
+int _vlog(FILE *out, const wchar_t *qualifier, const wchar_t *format, va_list va) {
     int rer = -1;
 
-	fprintf(out, "%s ", qualifier);
-    rer = vfprintf(out, format, va);
+	fwprintf(out, L"%s ", qualifier);
+    rer = vfwprintf(out, format, va);
 
     return rer;
 }
 
-void usage (char *progname) {
-        printf("usage: %s -d <ntds_file> -u <username> -n <newsid> [-l <logdir>] [-l <tmpedb_file>]\n", progname);
+void usage (const char *progname) {
+        printf("usage: %s -d <ntds_file> -u <username> -n <newsid> [-l <logdir>] [-l <tmpedb_file>] [-d <debug_level>]\n", progname);
         printf("\t -h --help                                Shows this help message\n"
-               "\t -d --db <ntds_file>						Location of the NTDS.DIT file to modify\n"
+               "\t -d --debug <debug_level>					Enable debug output\n"
+               "\t -f --file <ntds_file>					Location of the NTDS.DIT file to modify\n"
                "\t -u --username <username>					User to add the new SID to, no need to specify domain name\n"
                "\t -n --newsid <SID>						SID to add, in the format: S-1-521-...\n"
                "\t -l --logdir <logdir>						Directory that contains ntds logfiles (if any). Defaults to the current directory\n"

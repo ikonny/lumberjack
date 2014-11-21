@@ -19,3 +19,5 @@ JetEndSession@8
 JetTerm@4
 JetCloseDatabase@12
 JetGetSystemParameter@24
+JetRetrieveColumn@32
+JetGetTableColumnInfo@24
