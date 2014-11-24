@@ -11,19 +11,34 @@ lumberjack implements well-known attacks against flaws in Active Directory fores
 
 SIDHistory
 ----------
-First described by [Aelita][AELITA] in 2002, a rogue administrator of a domain can modify the SIDHistory of any user in a controlled domain to impersonate a user form any other domain inside the forest. The control that disables this attack (SID filtering, described in [MS02-001][MS02-001]) is not effective within a forest, basically allowing any domain admin to control any of the data in the forest.
+First described by [Aelita][AELITA] in 2002, a rogue administrator of a Windows domain can impersonate any other user in the forest (including administrators), effectively bypassing any restrictions that the Forest administrator may have put in place. Alternatively having admin access on any of the domain controllers or having physical access to the server hosting it allows an attacker to obtain the same results. This attack is verified to work in all platforms from Windows 2000 to Windows 2012 R2; being a design flaw there is no way to prevent it without breaking Windows functionality.
 
-The implementation of the attack is heavily based on the [SHEdit][SHEDIT] work by Tibor Biro, however as far as we know this is the first open-source 
+The way the implementation works is by accessing the raw NTDS active directory configuration and adding the SID of the target user to the SIDHistory of a user in the source (controlled) domain. When the domain is brought back online, the configuration is replicated to other DCs allowing access to any resources the target user had access to. The control that disables this attack (SID filtering, described in [MS02-001][MS02-001]) is not effective within a forest, basically allowing any domain admin to control any of the data in the forest.
+
+The implementation of the attack is heavily based on the [SHEdit][SHEDIT] work by Tibor Biro, improved to handle 2008, 2012 and 2012R2 domain controllers, detailed step-by-step:
+
+   1. Reboot the DC into Directory Restore mode, step-by-step instructions for [Windows 2012][[RESTORE2012]
+
+   2. Backup the NTDS folder (typically C:\WINDOWS\NTDS)
+
+   3. Run LJACK to modify the user SIDHistory entry, e.g.:
+
+      ljack -f ntds.dit -u user -n 0105000000000005150000008299D8989E179890D99AEE11F4010000
+
+	  A good target user to impersonate is one of the forest administrators
+	 
+   4. If the domain has more than a DC you need to perform an [authoritative restore][AUTHRESTORE2012] so that the changes made to the NTDS database will be replicated to all controllers
+
+   5. Boot back up and connect to any resources your target user has access to
+
+The application expects a clean NTDS database, if there are issues with the consistency of the database the application will let you know - check the *Troubleshooting* section below on tips to rebuild the database consistency. If you are editing an offline copy of NTDS try to run on the same system the file was extracted for and check the *ESE database compatibility* section below.
 
 TODO
 ----
 * Provide pre-compiled binaries
-* Test in Windows 2012
 * Test in Windows 2008
 * Test in Windows 2003
 * Test in Windows 2000
-* JetGetDatabaseFileInfo before opening
-* Check log format for pending to apply logs, e.g. to see if there are any issues with the version or similar
 
 ESE database compatibility
 ==========================
@@ -84,3 +99,5 @@ Thanks to Robert Rowan, who provided the original victim Windows test environmen
 [AELITA]: http://www.decuslib.com/decus/vmslt02a/sec/nt-sidescalation-attack.txt
 [MS02-001]: https://technet.microsoft.com/en-us/library/security/ms02-001.aspx
 [SHEDIT]: http://www.tbiro.com/projects/SHEdit/
+[RESTORE2012]: http://blogs.dirteam.com/blogs/sanderberkouwer/archive/2012/11/29/rebooting-windows-server-2012-based-domain-controllers-into-directory-services-restore-mode.aspx
+[AUTHRESTORE2012]: http://www.edeconsulting.be/downloads/WindowsServer2012ADBackupandDisasterRecoveryProcedures_V1.0.pdf

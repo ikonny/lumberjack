@@ -26,6 +26,7 @@ int log_error(const wchar_t *format, ...);
 int log_ok(const wchar_t *format, ...);
 int log_debug(const wchar_t *format, ...);
 int _vlog(FILE *out, const wchar_t *qualifier, const wchar_t *format, va_list va);
+int HexToArray(char *str, char arr[], unsigned int len);
 void usage (const char *progname);
 
 int debug_level = 0;
@@ -243,7 +244,8 @@ int main(int argc, char *argv[]) {
 	char *cfg_username = NULL;
 	char *cfg_newsid = NULL;
 
-	PSID sid, old_sid;
+	PSID old_sid;
+	unsigned char sid[28];
 	int sid_length;
 	int column_len;
 
@@ -307,11 +309,11 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
-	if(ConvertStringSidToSid(cfg_newsid, &sid) == 0) {
-		log_error(L"Invalid SID format, it must be in the format S-R-I-S-S (e.g. S-1-5-32-...)\n");
+	if(HexToArray(cfg_newsid, sid, 28) != 0) {
+		log_error(L"Invalid SID format, it must be in hex format and have 28 bytes, e.g. 0105000000000005150000008299D8989E179890D99AEE11F4010000\n");
 		exit(-1);
-	}	
-	
+	}
+
 	if(jet_db_initialize(&db, &db_session, &db_id, cfg_dbname, cfg_logdir, cfg_tmpedb) == 0) {
 
 		err = JetOpenTable(db_session, db_id, "datatable", NULL, 0, 8, &table_datatable);
@@ -383,7 +385,7 @@ int main(int argc, char *argv[]) {
 							err = JetPrepareUpdate(db_session, table_datatable, 2); // TODO: PrepCode is not in MSDN?
 		
 							if(err == JET_errSuccess) {
-								err = JetSetColumn(db_session, table_datatable, sidhistory_object_name, sid, GetLengthSid(sid), 0, NULL);
+								err = JetSetColumn(db_session, table_datatable, sidhistory_object_name, sid, 28, 0, NULL);
 
 								if(err == JET_errSuccess) {
 									err = JetUpdate(db_session, table_datatable, NULL, 0, NULL);
@@ -537,13 +539,35 @@ int _vlog(FILE *out, const wchar_t *qualifier, const wchar_t *format, va_list va
     return rer;
 }
 
+// Credits: http://stackoverflow.com/questions/1557400/hex-to-char-array-in-c
+int HexToArray(char *str, char arr[], unsigned int len) {
+	int ret = -1;
+	char *src = str;
+	unsigned int u;
+	int i;
+
+	if(strlen(str) == len * 2) {
+	  ret = 0;
+	  for(i=0; i < len; i++) {
+	    if(sscanf(str + 2*i, "%2x", &u) == 1) {
+			arr[i] = u;
+		} else {
+		  ret = -1;
+		  break;
+		}
+	  }
+	}
+	
+	return (ret);
+}
+
 void usage (const char *progname) {
         printf("usage: %s -d <ntds_file> -u <username> -n <newsid> [-l <logdir>] [-l <tmpedb_file>] [-d <debug_level>]\n", progname);
         printf("\t -h --help                                Shows this help message\n"
                "\t -d --debug <debug_level>					Enable debug output\n"
                "\t -f --file <ntds_file>					Location of the NTDS.DIT file to modify\n"
                "\t -u --username <username>					User to add the new SID to, no need to specify domain name\n"
-               "\t -n --newsid <SID>						SID to add, in the format: S-1-521-...\n"
+               "\t -n --newsid <SID>						SID to add, in hexadecimal format, e.g. 01050000000...\n"
                "\t -l --logdir <logdir>						Directory that contains ntds logfiles (if any). Defaults to the current directory\n"
                "\t -t --tmpedb <tmpedb_file>				Location of the TMP.EDB file that supports the NTDS.DIT file, if any. Defaults to tmp.db in the current directory\n"
 			   );
