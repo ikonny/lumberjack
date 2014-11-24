@@ -5,9 +5,9 @@ Active Directory forest security testing
 lumberjack implements well-known attacks against flaws in Active Directory forest and domain design:
 
 * SIDHistory: the lack of SID filtering amongst all domains in a forest allows a rogue domain administrator to impersonate an admin in any of the other domains
-* Modify membership of a universal group stored in the Global Catalog configuration partition
-* Add a trust between domains through the manipulation of forest configuration data that is copied to every domain controller
-* Manipulate forest schema by impersonating the Schema Master or other FSMO role
+* TODO: Modify membership of a universal group stored in the Global Catalog configuration partition
+* TODO: Add a trust between domains through the manipulation of forest configuration data that is copied to every domain controller
+* TODO: Manipulate forest schema by impersonating the Schema Master or other FSMO role
 
 SIDHistory
 ----------
@@ -75,6 +75,10 @@ If you are not able to recover the database you are probably only left with the 
 	ESENTUTL /p /o ntds.dit
 
 If you are able to repair or recover the database, please take a backiup of the resulting files. You do not want the results of all your efforts lost.
+
+Compiling
+=========
+Although pre-compiled binaries are bundled with the distribution you can compile the application from scratch; the source is self-contained and does not have any external dependencies.  The code has been developed to be compiled under MingW, the provided Makefile should make compilation easy - just run 'make' and you should be done.
 
 References
 ==========
