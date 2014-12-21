@@ -83,11 +83,13 @@ Although pre-compiled binaries are bundled with the distribution you can compile
 
 References
 ==========
-Online SidHistory attack
-http://cosmoskey.blogspot.com.es/2010/08/online-sidhistory-edit-sid-injection.html
+[SHEdit][SHEDIT]
 
-AD Partitions
-http://www.selfadsi.org/adsdb.htm
+[Online SidHistory attack][ONLINESID]
+
+[AD Partitions][ADPARTITIONS]
+
+[Achieving Autonomy and Isolation with Forests, Domains, and Organizational Units][ISOLATION]
 
 Acknowledgements
 ================
@@ -101,3 +103,5 @@ Thanks to Robert Rowan, who provided the original victim Windows test environmen
 [RESTORE2012]: http://blogs.dirteam.com/blogs/sanderberkouwer/archive/2012/11/29/rebooting-windows-server-2012-based-domain-controllers-into-directory-services-restore-mode.aspx
 [AUTHRESTORE2012]: http://www.edeconsulting.be/downloads/WindowsServer2012ADBackupandDisasterRecoveryProcedures_V1.0.pdf
 [ISOLATION]: http://technet.microsoft.com/en-us/library/bb727032.aspx
+[ONLINESID]: http://cosmoskey.blogspot.com.es/2010/08/online-sidhistory-edit-sid-injection.html
+[ADPARTITIONS]: http://www.selfadsi.org/adsdb.htm
