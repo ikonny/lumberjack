@@ -5,19 +5,16 @@ Active Directory forest security testing
 lumberjack implements well-known attacks against flaws in Active Directory forest and domain design:
 
 * SIDHistory: the lack of SID filtering amongst all domains in a forest allows a rogue domain administrator to impersonate an admin in any of the other domains
-* TODO: Modify membership of a universal group stored in the Global Catalog configuration partition
-* TODO: Add a trust between domains through the manipulation of forest configuration data that is copied to every domain controller
-* TODO: Manipulate forest schema by impersonating the Schema Master or other FSMO role
 
 SIDHistory
 ----------
 First described by [Aelita][AELITA] in 2002, a rogue administrator of a Windows domain can impersonate any other user in the forest (including administrators), effectively bypassing any restrictions that the Forest administrator may have put in place. Alternatively having admin access on any of the domain controllers or having physical access to the server hosting it allows an attacker to obtain the same results. This attack is verified to work in all platforms from Windows 2000 to Windows 2012 R2; being a design flaw there is no way to prevent it without breaking Windows functionality.
 
-The way the implementation works is by accessing the raw NTDS active directory configuration and adding the SID of the target user to the SIDHistory of a user in the source (controlled) domain. When the domain is brought back online, the configuration is replicated to other DCs allowing access to any resources the target user had access to. The control that disables this attack (SID filtering, described in [MS02-001][MS02-001]) is not effective within a forest, basically allowing any domain admin to control any of the data in the forest.
+The way the implementation works is by accessing the raw NTDS active directory configuration and adding the SID of the target user to the SIDHistory of a user in the source (controlled) domain. When the domain is brought back online, the configuration is replicated to other DCs allowing access to any resources the target user had access to. The control that disables this attack (SID filtering, described in [MS02-001][MS02-001]) is not effective within a forest, basically allowing any domain admin to control any of the data in the forest. So if you need to maintain different environments with different security requirements make sure you put them in separate forests, as there is no way to isolate domains from each other. ["Achieving Autonomy and Isolation with Forests, Domains, and Organizational Units"][ISOLATION] is a must read if you are designing an AD environment.
 
 The implementation of the attack is heavily based on the [SHEdit][SHEDIT] work by Tibor Biro, improved to handle 2008, 2012 and 2012R2 domain controllers, detailed step-by-step:
 
-   1. Reboot the DC into Directory Restore mode, step-by-step instructions for [Windows 2012][[RESTORE2012]
+   1. Reboot the DC into Directory Restore mode, step-by-step instructions for [Windows 2012][RESTORE2012]
 
    2. Backup the NTDS folder (typically C:\WINDOWS\NTDS)
 
@@ -39,6 +36,10 @@ TODO
 * Test in Windows 2008
 * Test in Windows 2003
 * Test in Windows 2000
+* TODO: Modify membership of a universal group stored in the Global Catalog configuration partition
+* TODO: Add a trust between domains through the manipulation of forest configuration data that is copied to every domain controller
+* TODO: Manipulate forest schema by impersonating the Schema Master or other FSMO role
+* TODO: Kerberos TGT / PAC group padding (patched in MS14-068)
 
 ESE database compatibility
 ==========================
@@ -74,7 +75,7 @@ If you are not able to recover the database you are probably only left with the 
 
 	ESENTUTL /p /o ntds.dit
 
-If you are able to repair or recover the database, please take a backiup of the resulting files. You do not want the results of all your efforts lost.
+If you are able to repair or recover the database, please take a backup of the resulting files. You do not want the results of all your efforts lost.
 
 Compiling
 =========
@@ -82,17 +83,11 @@ Although pre-compiled binaries are bundled with the distribution you can compile
 
 References
 ==========
-SHEdit
-http://www.tbiro.com/projects/SHEdit/index.htm
-
 Online SidHistory attack
 http://cosmoskey.blogspot.com.es/2010/08/online-sidhistory-edit-sid-injection.html
 
 AD Partitions
 http://www.selfadsi.org/adsdb.htm
-
-Achieving Autonomy and Isolation with Forests, Domains, and Organizational Units
-http://technet.microsoft.com/en-us/library/bb727032.aspx
 
 Acknowledgements
 ================
@@ -105,3 +100,4 @@ Thanks to Robert Rowan, who provided the original victim Windows test environmen
 [SHEDIT]: http://www.tbiro.com/projects/SHEdit/
 [RESTORE2012]: http://blogs.dirteam.com/blogs/sanderberkouwer/archive/2012/11/29/rebooting-windows-server-2012-based-domain-controllers-into-directory-services-restore-mode.aspx
 [AUTHRESTORE2012]: http://www.edeconsulting.be/downloads/WindowsServer2012ADBackupandDisasterRecoveryProcedures_V1.0.pdf
+[ISOLATION]: http://technet.microsoft.com/en-us/library/bb727032.aspx
